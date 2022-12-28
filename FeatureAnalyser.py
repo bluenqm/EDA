@@ -12,7 +12,6 @@ class FeatureAnalyser:
         sns.set_palette('Set2')
 
     def visualise_numerical_variable(self, numerical_variable, kde=False):
-        plt.title(label=numerical_variable)
         col = self.data[numerical_variable]
         f, (ax_box, ax_hist) = plt.subplots(2, sharex=True, gridspec_kw={"height_ratios": (0.5, 2)})
         mean = np.array(col).mean()
@@ -27,7 +26,6 @@ class FeatureAnalyser:
         ax_hist.axvline(mean, color='r', linestyle='--')
 
         plt.legend({'Mean': mean})
-        ax_box.set(xlabel='')
         self.display_plot(numerical_variable)
 
     def display_plot(self, plot_name=None):
@@ -37,14 +35,17 @@ class FeatureAnalyser:
             plt.show()
 
     def visualise_categorical_variable(self, categorical_variable, order=None):
-        sns.countplot(x=categorical_variable, data=self.data, order=order)
+        sns.countplot(x=categorical_variable, data=self.data)
         self.set_x_labels()
         self.display_plot(categorical_variable)
 
     def set_x_labels(self):
         tick_labels = [item.get_text() for item in plt.xticks()[1]]
-        if (len(tick_labels) > 5):
+        if (len(tick_labels) > 8):
             new_tick_labels = [label[:4] for label in tick_labels]
+            plt.xticks(range(len(tick_labels)), new_tick_labels)
+        elif (len(tick_labels) == 8):
+            new_tick_labels = [label[:8] for label in tick_labels]
             plt.xticks(range(len(tick_labels)), new_tick_labels)
 
     def visualise_variable(self, variable):
@@ -73,10 +74,42 @@ class FeatureAnalyser:
             print('Not a supported variables')
         self.display_plot(first_var + '_' + second_var + '.png')
 
-    def visualise_num_cat_variables(self, num_var, cat_var):
-        f, (ax_box, ax_hist) = plt.subplots(1, 2, sharey=True)
-        sns.boxplot(x=cat_var, y=num_var, data=self.data, ax=ax_box)
-        sns.histplot(x=cat_var, y=num_var, data=self.data, stat="proportion", multiple='layer', ax=ax_hist)
-        self.set_x_labels()
+    def visualise_num_cat_variables(self, num_var, cat_var, stat='count'):
+        plt.clf()
+        binwidth = None
+        if pd.api.types.is_integer_dtype(self.data[num_var]):
+            binwidth = 1
+        y_labels = self.data[cat_var].unique()
+        color_idx = 0
+        for label in y_labels:
+            data = self.data[self.data[cat_var] == label][num_var]
+            color = sns.color_palette('Set2')[color_idx]
+            sns.histplot(data=data, color=color, stat=stat, binwidth=binwidth, kde=True, label=label)
+            color_idx = color_idx + 1
+        plt.legend(loc='upper right')
         self.display_plot(num_var + '_' + cat_var + '.png')
         return
+
+    def visualise_num_cat_variables_fill(self, num_var, cat_var):
+        plt.clf()
+        binwidth = None
+        if pd.api.types.is_integer_dtype(self.data[num_var]):
+            binwidth = 1
+
+        sns.histplot(x=num_var, hue=cat_var, data=self.data, stat="percent", multiple='fill', binwidth=binwidth, hue_order=['no', 'yes'])
+
+        self.display_plot(num_var + '_' + cat_var + '.png')
+        return
+
+    def visualise_cat_pie_chart(self, cat_var):
+        s = self.data[cat_var].value_counts()
+        plt.pie(s, labels=s.index, autopct=self.autopct_format(s), colors=sns.color_palette('Set2'))
+        self.display_plot(cat_var + '_pie.png')
+
+    def autopct_format(self, values):
+        def my_format(pct):
+            total = sum(values)
+            val = int(round(pct*total/100.0))
+            return '{:.1f}%\n({v:d})'.format(pct, v=val)
+        return my_format
+
