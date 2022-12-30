@@ -8,8 +8,8 @@ class DataDescriptor:
         return self.data.drop_duplicates(self.data)
 
     def get_basic_description(self):
-        X = self.data.iloc[:, :-1]
-        y = self.data.iloc[:, -1]
+        X = self.data.drop(columns=['y'])
+        y = self.data['y']
         n_samples, n_features = X.shape
 
         print("Number of samples: ", n_samples)

@@ -1,8 +1,9 @@
-import pandas as pd
-import numpy as np
-import seaborn as sns
-import scipy.stats
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from sklearn.ensemble import RandomForestRegressor
+
 
 class FeatureAnalyser:
     def __init__(self, data, savefig=False):
@@ -16,7 +17,7 @@ class FeatureAnalyser:
         f, (ax_box, ax_hist) = plt.subplots(2, sharex=True, gridspec_kw={"height_ratios": (0.5, 2)})
         mean = np.array(col).mean()
 
-        sns.boxplot(data=col, orient='h', width=0.6, ax=ax_box)
+        sns.boxplot(data=self.data, x=numerical_variable, orient='h', width=0.6, ax=ax_box)
         ax_box.axvline(mean, color='r', linestyle='--')
 
         binwidth = None
@@ -102,9 +103,11 @@ class FeatureAnalyser:
         return
 
     def visualise_cat_pie_chart(self, cat_var):
+        plt.clf()
         s = self.data[cat_var].value_counts()
         plt.pie(s, labels=s.index, autopct=self.autopct_format(s), colors=sns.color_palette('Set2'))
-        self.display_plot(cat_var + '_pie.png')
+        plt.title(cat_var)
+        self.display_plot(cat_var + '_pie')
 
     def autopct_format(self, values):
         def my_format(pct):
@@ -113,3 +116,19 @@ class FeatureAnalyser:
             return '{:.1f}%\n({v:d})'.format(pct, v=val)
         return my_format
 
+    def corr_heatmap(self, method='pearson'):
+        plt.clf()
+        plt.figure(figsize=(10, 10))
+        corr = self.data.corr(method=method, numeric_only=True)
+        mask = np.triu(corr, k=1)
+        sns.heatmap(corr, annot=True, vmax=1, vmin=-1, square=True, cmap='BrBG', mask=mask)
+        self.display_plot('corr_heatmap_' + method)
+
+    def predict_power(self, target):
+        rf = RandomForestRegressor()
+        X = self.data.drop(columns=target)
+        y = self.data[target]
+        rf.fit(X, y)
+        predictive_power = sorted(zip(map(lambda x: round(x, 4), rf.feature_importances_), X.columns), reverse=True)
+        for power, feature in predictive_power:
+            print(f'{feature}: {power}')
